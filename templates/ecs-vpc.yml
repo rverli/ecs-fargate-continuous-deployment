@@ -1,0 +1,97 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: A VPC with two public subnets on two separate Availability Zones, an internet gateway, and a route table with a default route to the public internet. 
+
+Parameters:
+  
+  Name:
+    Type: String
+  VpcCIDR:
+    Type: String
+    Default: '10.0.0.0/16'
+  PublicSubnetOneCIDR:
+    Type: String
+    Default: '10.0.0.0/24'
+  PublicSubnetTwoCIDR:
+    Type: String
+    Default: '10.0.1.0/24'
+
+Resources:
+
+  # VPC in which containers will be networked. It has two public subnets.
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      Tags:
+        - Key: Name
+          Value: !Ref Name
+
+  # Two public subnets, where containers can have public IP addresses
+  PublicSubnetOne:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      MapPublicIpOnLaunch: true
+      CidrBlock: !Ref PublicSubnetOneCIDR
+      Tags:
+        - Key: Name
+          Value: !Sub ${Name} (Public)
+  PublicSubnetTwo:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs ]
+      MapPublicIpOnLaunch: true
+      CidrBlock: !Ref PublicSubnetTwoCIDR
+      Tags:
+        - Key: Name
+          Value: !Sub ${Name} (Public)
+
+  # Setup networking resources for the public subnets.
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref Name
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Ref Name
+  DefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  Subnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref PublicSubnetOne
+  Subnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref PublicSubnetTwo
+
+# These are the values output by the CloudFormation template.
+Outputs:
+
+  VpcId:
+    Value: !Ref VPC
+
+  PublicSubnetOne:
+    Value: !Ref PublicSubnetOne
+
+  PublicSubnetTwo:
+    Value: !Ref PublicSubnetTwo

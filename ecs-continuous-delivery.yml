@@ -1,0 +1,77 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: AWS CodePipeline and AWS CodeBuild to build an automated continuous deployment
+             pipeline to Amazon ECS using clusters (AWS Fargate).
+
+Parameters:
+  
+  GitHubUser:
+    Type: String
+    Description: The GitHub username.
+  GitHubRepo:
+    Type: String
+    Default: ceros-sky
+    Description: The repo name of the service.
+  GitHubBranch:
+    Type: String
+    Default: master
+    Description: Name of the GitHub branch.
+  GitHubToken:
+    Type: String
+    NoEcho: true
+    Description: Token for the user specified above. (https://github.com/settings/tokens)
+  S3BucketName:
+    Type: String
+    Default: ecs-continuous-deployment-rverli
+    Description: The S3 bucket where you fetched the templates.
+
+Resources:
+
+  VPC:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://s3.amazonaws.com/${S3BucketName}/templates/ecs-vpc.yml"
+      Parameters:
+        Name: !Ref AWS::StackName
+        
+  Cluster:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://s3.amazonaws.com/${S3BucketName}/templates/ecs-cluster.yml"
+      Parameters:
+        PublicSubnetOne: !GetAtt VPC.Outputs.PublicSubnetOne
+        PublicSubnetTwo: !GetAtt VPC.Outputs.PublicSubnetTwo
+        VpcId: !GetAtt VPC.Outputs.VpcId
+
+  Service:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://s3.amazonaws.com/${S3BucketName}/templates/ecs-service.yml"
+      Parameters:
+        Cluster: !GetAtt Cluster.Outputs.ClusterName
+        TargetGroup: !GetAtt Cluster.Outputs.TargetGroup
+        SourceSecurityGroup: !GetAtt Cluster.Outputs.SecurityGroup
+        PublicSubnetOne: !GetAtt VPC.Outputs.PublicSubnetOne
+        PublicSubnetTwo: !GetAtt VPC.Outputs.PublicSubnetTwo
+
+  DeploymentPipeline:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://s3.amazonaws.com/${S3BucketName}/templates/ecs-deployment-pipeline.yml"
+      Parameters:
+        Cluster: !GetAtt Cluster.Outputs.ClusterName
+        Service: !GetAtt Service.Outputs.Service
+        GitHubUser: !Ref GitHubUser
+        GitHubToken: !Ref GitHubToken
+        GitHubRepo: !Ref GitHubRepo
+        GitHubBranch: !Ref GitHubBranch
+
+# These are the values output by the CloudFormation template. 
+Outputs:
+
+  ApplicationUrl:
+    Description: The service that is being continuously deployed.
+    Value: !GetAtt Cluster.Outputs.ServiceUrl
+
+  CodePipelineUrl:
+    Description: The continuous deployment pipeline in the AWS Management Console.
+    Value: !GetAtt DeploymentPipeline.Outputs.PipelineUrl

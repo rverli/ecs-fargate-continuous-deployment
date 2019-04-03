@@ -1,0 +1,96 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: An ECS task definition, service, IAM role, and ECR repository for the sample application.
+
+Parameters:
+
+  Cluster:
+    Type: String
+  DesiredCount:
+    Type: Number
+    Default: 3
+  TargetGroup:
+    Type: String
+  SourceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup::Id
+  PublicSubnetOne:
+    Type: AWS::EC2::Subnet::Id
+  PublicSubnetTwo:
+    Type: AWS::EC2::Subnet::Id
+
+Resources:
+
+  # The service is a resource which allows you to run multiple
+  # copies of a type of task, monitor the number of running tasks 
+  # and replace any that have crashed
+  Service:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref Cluster
+      DesiredCount: !Ref DesiredCount
+      TaskDefinition: !Ref TaskDefinition
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref SourceSecurityGroup
+          Subnets:
+            - !Ref PublicSubnetOne
+            - !Ref PublicSubnetTwo
+      LoadBalancers:
+        - ContainerName: ceros-app
+          ContainerPort: 80
+          TargetGroupArn: !Ref TargetGroup
+
+  # The task definition. This is a simple metadata description of what
+  # container to run, and what resource requirements it has.
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${AWS::StackName}-ceros-app
+      RequiresCompatibilities:
+        - FARGATE
+      Memory: 512
+      Cpu: 256
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !Ref TaskExecutionRole
+      ContainerDefinitions:
+        - Name: ceros-app
+          Image: amazon/amazon-ecs-sample
+          Essential: true
+          Memory: 512
+          Cpu: 256
+          PortMappings:
+            - ContainerPort: 80
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref LogGroup
+              awslogs-stream-prefix: !Ref AWS::StackName
+        
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  # Store the stdout logs from this service's containers
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/${AWS::StackName}
+
+# These are the values output by the CloudFormation template. 
+Outputs:
+
+  Service:
+    Value: !Ref Service
