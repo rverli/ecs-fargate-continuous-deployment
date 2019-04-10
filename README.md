@@ -1,15 +1,9 @@
-# Ceros Code Challenge
-
-[My Code Challenge - GitHub repository](https://github.com/rverli/ecs-fargate-continuous-deployment.git)
-
 # Docker on Amazon ECS(Fargate) with Continuous Delivery
-
-This is the code challenge related to Sr DevOps position at Ceros. 
 
 I'm using Continuous Deployment to demonstrate how to achieve it of an application on Amazon Elastic
 Container Service(Amazon ECS) using AWS CodePipeline and AWS CodeBuild. In this way, revisions are deployed to the right environment automatically without needed approval from a developer or manager, making the software release automated.
 
-- Containerize Ceros Application
+- Containerize Application
 - Build a docker image and push to ECR
 - CF stack to create VPC, Subnet, etc
 - CF stack to create ECS Cluster, Loadbalancer, Listener, Security groups, etc
@@ -59,8 +53,8 @@ A step by step series of examples that tell you how to get a development environ
 ### Cloning source code
 
 In order to proceed a continuous deployment is necessary that you have your source code on a GitHub repository.
-Create a repository in your GitHub account, unzip the `ceros-sky.zip` and push the source code of the ceros-sky application or [Fork](https://github.com/rverli/ecs-fargate-continuous-deployment.git) the GitHub repository.
-it's the same ceros-sky code, the only change is that I added a Dockerfile on the main folder of ceros-sky
+Create a repository in your GitHub account, unzip the `ceros-sky.zip` and push the source code of the ceros-sky application or [Fork](https://github.com/rverli/ceros-sky.git) the GitHub repository.
+it's the same sky code, the only change is that I added a Dockerfile on the main folder of ceros-sky
 project.
 
 ### Sending templates files to S3 Bucket
